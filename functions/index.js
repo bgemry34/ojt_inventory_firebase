@@ -25,6 +25,20 @@ const getId = () => {
     return id;
 }
 
+const listAllUsers = (nextPageToken) => {
+    // List batch of users, 1000 at a time.
+    return admin
+    .auth() 
+    .listUsers(1000, nextPageToken)
+    .then(userData=>userData.users.map(user=>({
+        email:user.email,
+        create_date:user.metadata.creationTime
+    })))
+    .catch((error) => {
+    console.log('Error listing users:', error);
+    });
+};
+
 // app.get('/hello-world', (req, res)=>{
     
 //     return res.status(200).send(id);
@@ -92,9 +106,9 @@ app.get('/api/items/read/:id', (req, res)=>{
             });
         }
     })();
-})
+});
 
-
+//Get all
 app.get('/api/items/read', (req, res)=>{
     (async ()=>{
         try{
@@ -112,6 +126,44 @@ app.get('/api/items/read', (req, res)=>{
                     }
                     response.push(selectedItem)
                 }
+
+                return 0;
+            }).catch(e=>console.log(e))
+
+            return res.status(200).send({
+                status:'success',
+                data: response
+            });
+        }catch(e){
+            return res.status(500).send({
+                status:'failed',
+                error:e
+            });
+        }
+    })();
+})
+
+
+//Get all
+app.get('/api/items/getBydepartment/:department', (req, res)=>{
+    (async ()=>{
+        try{
+            let query = db.collection('items');
+            let response = [];
+
+            await query.get().then(querySnapshot=>{
+                let docs = querySnapshot.docs;
+                
+                for(let doc of docs){
+                    const {id} = doc;
+                    const {name, company, model, qty, price, depre_price, department, purchase_order_no} =doc.data();
+                    const selectedItem = {
+                        id, name, company, model, qty, price, depre_price, department, purchase_order_no
+                    }
+                    if(req.params.department === department)
+                    response.push(selectedItem)
+                }
+                return 0;
             })
 
             return res.status(200).send({
@@ -127,6 +179,41 @@ app.get('/api/items/read', (req, res)=>{
     })();
 })
 
+//Search Read
+app.get('/api/items/search/:tosearch', (req, res)=>{
+    (async ()=>{
+        try{
+            let query = db.collection('items');
+            let response = [];
+
+            await query.get().then(querySnapshot=>{
+                let docs = querySnapshot.docs;
+                console.log
+                for(let doc of docs){
+                    const {id} = doc;
+                    const {name, company, model, qty, price, depre_price, department, purchase_order_no} =doc.data();
+                    const selectedItem = {
+                        id, name, company, model, qty, price, depre_price, department, purchase_order_no
+                    }
+                    if (name.toUpperCase().indexOf(req.params.tosearch.toUpperCase()) > -1) 
+                    response.push(selectedItem)
+                }
+                return 0;
+            })
+
+            return res.status(200).send({
+                status:'success',
+                data: response
+            });
+        }catch(e){
+            return res.status(500).send({
+                status:'failed',
+                error:e
+            });
+        }
+    })();
+});
+
 //Count
 app.get('/api/items/count', (req, res)=>{
     (async ()=>{
@@ -136,6 +223,8 @@ app.get('/api/items/count', (req, res)=>{
 
             await query.get().then(querySnapshot=>{
                 response = querySnapshot.size;
+
+                return 0;
             })
 
             return res.status(200).send({
@@ -272,6 +361,8 @@ app.get('/api/company/read', (req, res)=>{
                     }
                     response.push(selectedItem)
                 }
+
+                return 0;
             })
 
             return res.status(200).send({
@@ -296,6 +387,7 @@ app.get('/api/company/count', (req, res)=>{
 
             await query.get().then(querySnapshot=>{
                 response = querySnapshot.size;
+                return 0;
             });
 
             return res.status(200).send({
@@ -424,6 +516,7 @@ app.get('/api/department/read', (req, res)=>{
                     }
                     response.push(selectedItem)
                 }
+                return 0;
             })
 
             return res.status(200).send({
@@ -448,6 +541,7 @@ app.get('/api/department/count', (req, res)=>{
 
             await query.get().then(querySnapshot=>{
                 response = querySnapshot.size;
+                return 0;
             });
 
             return res.status(200).send({
@@ -507,36 +601,43 @@ app.delete('/api/department/delete/:id', (req, res)=>{
 });
 
 //USER
-app.get('/api/department/users/read', (req, res)=>{
+//get all users
+app.get('/api/users/read', (req, res)=>{
     (async ()=>{
-        const listAllUsers = (nextPageToken) => {
-            // List batch of users, 1000 at a time.
-            admin
-              .auth()
-              .listUsers(1000, nextPageToken)
-              .then((listUsersResult) => {
-                listUsersResult.users.forEach((userRecord) => {
-                  console.log('user', userRecord.toJSON());
-                });
-                if (listUsersResult.pageToken) {
-                  // List next batch of users.
-                  listAllUsers(listUsersResult.pageToken);
-                }
-              })
-              .catch((error) => {
-                console.log('Error listing users:', error);
-              });
-          };
-          // Start listing users from the beginning, 1000 at a time.
-          listAllUsers();
-
-          return res.status(200).send({
-            status:'success',
-            data:users
-        });
+        try{
+            const users = await listAllUsers();
+            return res.status(200).send({
+                status:'success',
+                users
+            });
+        }catch(e){
+            console.log(e);
+            return res.status(500).send({
+                status:'failed',
+                error:e
+            });
+        }
     })();
 });
 
+//get users count
+app.get('/api/users/count', (req, res)=>{
+    (async ()=>{
+        try{
+            const users = await listAllUsers();
+            return res.status(200).send({
+                status:'success',
+                count: users.length
+            });
+        }catch(e){
+            console.log(e);
+            return res.status(500).send({
+                status:'failed',
+                error:e
+            });
+        }
+    })();
+});
 
 //Export the api to firebase
 exports.app = functions.https.onRequest(app);
